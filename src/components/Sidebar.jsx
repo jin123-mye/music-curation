@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { glass, glassDark, getTheme, getDarkTheme, sidebarGlass, sidebarGlassDark, GLOBAL_CSS } from '../styles/theme'
 
-export default function Sidebar({ playlist, albums, historyList = [], likedSongs = [], onRemoveFromAlbum, onCreateAlbum, onDeleteAlbum, user, onLogout, onPlay, dominantTheme, onHistoryClick, onLogoClick, onTasteClick, onArtistClick, onSearchClick, onAlbumPage, onLikedPage, onMixPage, activeScreen, isDark = false, onToggleDark, onCollapseChange, isMobile = false, mobileOpen = false, onMobileClose }) {
+export default function Sidebar({ playlist, albums, historyList = [], likedSongs = [], onRemoveFromAlbum, onCreateAlbum, onDeleteAlbum, user, onLogout, onPlay, dominantTheme, onHistoryClick, onLogoClick, onTasteClick, onArtistClick, onSearchClick, onAlbumPage, onLikedPage, onMixPage, onImportPage, activeScreen, isDark = false, onToggleDark, onCollapseChange, isMobile = false, mobileOpen = false, onMobileClose }) {
   const [collapsed, setCollapsed] = useState(false)
   // 모바일에서는 항상 펼친 형태로 표시 (접힘 무시)
   const isCollapsed = isMobile ? false : collapsed
@@ -194,6 +194,21 @@ export default function Sidebar({ playlist, albums, historyList = [], likedSongs
               <span style={{ flex: 1, textAlign: 'left' }}>맞춤 믹스</span>
               <span style={{ fontSize: 11, opacity: 0.8 }}>AI ✨</span>
             </button>
+
+            {/* 보관함 가져오기 (스크린샷 → 곡 추출 + 취향 분석) */}
+            <button onClick={onImportPage} style={{
+              width: '100%', marginTop: 8, padding: '12px 14px', borderRadius: 14, cursor: 'pointer',
+              border: 'none', display: 'flex', alignItems: 'center', gap: 10,
+              background: activeScreen === 'import'
+                ? 'linear-gradient(135deg,#4090e0,#20b0a0)'
+                : (isDark ? 'rgba(64,144,224,0.16)' : 'rgba(64,144,224,0.10)'),
+              color: activeScreen === 'import' ? '#fff' : (isDark ? 'rgba(190,225,255,0.85)' : 'rgba(20,90,150,0.90)'),
+              fontSize: 13, fontWeight: 700, transition: 'all 0.2s',
+            }}>
+              <span style={{ fontSize: 16 }}>📸</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>보관함 가져오기</span>
+              <span style={{ fontSize: 11, opacity: 0.8 }}>취향분석</span>
+            </button>
           </div>
         )}
 
@@ -220,6 +235,15 @@ export default function Sidebar({ playlist, albums, historyList = [], likedSongs
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(124,92,255,0.26)'}
                 onMouseLeave={e=>e.currentTarget.style.background=isDark?'rgba(124,92,255,0.16)':'rgba(124,92,255,0.10)'}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="9" width="3" height="11" rx="1"/><rect x="10.5" y="4" width="3" height="16" rx="1"/><rect x="17" y="13" width="3" height="7" rx="1"/></svg>
+              </button>
+              {/* 카메라 = 보관함 가져오기 */}
+              <button onClick={onImportPage} title="보관함 가져오기"
+                style={{ width: 38, height: 38, borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: isDark?'rgba(64,144,224,0.16)':'rgba(64,144,224,0.10)', color: '#3d9be0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(64,144,224,0.26)'}
+                onMouseLeave={e=>e.currentTarget.style.background=isDark?'rgba(64,144,224,0.16)':'rgba(64,144,224,0.10)'}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3L7.17 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.17L15 3H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
               </button>
               {/* 음표 = 내 앨범 (앨범 있으면 첫 앨범 재생, 없으면 메인) */}
               <button onClick={onAlbumClick} title="내 앨범"

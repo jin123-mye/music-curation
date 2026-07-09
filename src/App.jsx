@@ -18,6 +18,7 @@ import Search from './components/Search'
 import AlbumPage from './components/AlbumPage'
 import LikedPage from './components/LikedPage'
 import MixPage from './components/MixPage'
+import LibraryImport from './components/LibraryImport'
 
 export default function App() {
   const [user, setUser]               = useState(null)
@@ -34,6 +35,8 @@ export default function App() {
   const [emotionStats, setEmotionStats] = useState(null) // Firestore 감정 집계
   const [tasteGenres, setTasteGenres]   = useState([])   // 취향: 장르
   const [tasteArtists, setTasteArtists] = useState([])   // 취향: 아티스트
+  const [importedSongs, setImportedSongs] = useState([]) // 보관함 캡쳐로 불러온 곡
+  const [tasteProfile, setTasteProfile]   = useState(null) // 보관함 기반 취향 분석 결과
 
   // ── 전역 미니 플레이어 state ──────────────────────────
   const [currentSong, setCurrentSong]   = useState(null)
@@ -87,6 +90,21 @@ export default function App() {
             setTasteGenres(Array.isArray(t.genres) ? t.genres : [])
             setTasteArtists(Array.isArray(t.artists) ? t.artists : [])
           }
+
+          // 보관함 캡쳐로 불러온 곡 — users/{uid}/imported
+          const importedSnap = await getDocs(collection(db, 'users', firebaseUser.uid, 'imported'))
+          setImportedSongs(importedSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+
+          // 보관함 기반 취향 분석 결과 — users/{uid}/preferences/tasteProfile
+          const profSnap = await getDoc(doc(db, 'users', firebaseUser.uid, 'preferences', 'tasteProfile'))
+          const hasProfile = profSnap.exists()
+          if (hasProfile) setTasteProfile(profSnap.data())
+
+          // 신규 가입 직후 1회 → 보관함 가져오기 화면으로 안내
+          if (localStorage.getItem('mc_new_signup') === firebaseUser.uid) {
+            localStorage.removeItem('mc_new_signup')
+            if (!hasProfile) setScreen('import')
+          }
         } catch (e) {
           console.error('데이터 불러오기 실패:', e)
         }
@@ -95,6 +113,8 @@ export default function App() {
         setLikedSongs([])
         setTasteGenres([])
         setTasteArtists([])
+        setImportedSongs([])
+        setTasteProfile(null)
       }
     })
 
@@ -114,6 +134,49 @@ export default function App() {
     setLikedSongs([])
     setTasteGenres([])
     setTasteArtists([])
+    setImportedSongs([])
+    setTasteProfile(null)
+  }
+
+  // ── 보관함 캡쳐: 불러온 곡 저장 (Firestore 영속화) ─────────
+  const handleSaveImported = async (songs) => {
+    // 낙관적 업데이트 (title+artist 기준 병합)
+    setImportedSongs(prev => {
+      const map = new Map(prev.map(s => [`${s.title}_${s.artist}`, s]))
+      songs.forEach(s => map.set(`${s.title}_${s.artist}`, { ...s, id: `${s.title}_${s.artist}`.replace(/\//g, '-').slice(0, 100) }))
+      return Array.from(map.values())
+    })
+    if (user) {
+      try {
+        await Promise.all(songs.map(song => {
+          const songKey = `${song.title}_${song.artist}`.replace(/\//g, '-').slice(0, 100)
+          return setDoc(doc(db, 'users', user.uid, 'imported', songKey), {
+            title: song.title || '',
+            artist: song.artist || '',
+            youtubeQuery: song.youtubeQuery || '',
+            importedAt: serverTimestamp(),
+          })
+        }))
+      } catch (e) {
+        console.error('보관함 저장 실패:', e)
+      }
+    }
+  }
+
+  // ── 보관함 기반 취향 분석 결과 저장 ─────────────────────────
+  const handleSaveTasteProfile = async (profile) => {
+    setTasteProfile(profile)
+    if (user) {
+      try {
+        await setDoc(
+          doc(db, 'users', user.uid, 'preferences', 'tasteProfile'),
+          { ...profile, updatedAt: serverTimestamp() },
+          { merge: true }
+        )
+      } catch (e) {
+        console.error('취향 분석 저장 실패:', e)
+      }
+    }
   }
 
   // ── 취향 저장 (Firestore 영속화) ───────────────────────
@@ -398,6 +461,7 @@ JSON만 반환해. 마크다운 쓰지 마.
         onAlbumPage={() => setScreen('album')}
         onLikedPage={() => setScreen('liked')}
         onMixPage={() => setScreen('mix')}
+        onImportPage={() => setScreen('import')}
         activeScreen={screen}
         onCollapseChange={setSidebarCollapsed}
         isDark={isDark}
@@ -534,6 +598,18 @@ JSON만 반환해. 마크다운 쓰지 마.
             onPlaySong={handlePlaySong}
             onToggleLike={handleToggleLike}
             onAddToQueue={handleAddToQueue}
+          />
+        )}
+
+        {screen === 'import' && (
+          <LibraryImport
+            isDark={isDark}
+            emotion={emotion}
+            onBack={() => setScreen('main')}
+            onPlaySong={handlePlaySong}
+            onSaveImported={handleSaveImported}
+            onSaveTasteProfile={handleSaveTasteProfile}
+            onSaveTaste={handleSaveTaste}
           />
         )}
 

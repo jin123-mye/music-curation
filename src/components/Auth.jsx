@@ -55,6 +55,8 @@ export default function Auth({ onLogin, isDark = false, onToggleDark }) {
         await setDoc(doc(db, 'users', result.user.uid), {
           name, email, createdAt: new Date(),
         })
+        // 신규 가입 표시 → App에서 로그인 직후 '보관함 가져오기'로 안내
+        try { localStorage.setItem('mc_new_signup', result.user.uid) } catch (_) {}
         onLogin({ ...result.user, displayName: name })
       }
     } catch (err) {
